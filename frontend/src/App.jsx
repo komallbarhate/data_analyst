@@ -50,9 +50,9 @@ function AppLayout() {
             </div>
           } />
           <Route path="/upload" element={
-            <div style={{ padding: 32, maxWidth: 700 }}>
-              <h2 style={{ marginBottom: 8 }}>Upload Dataset</h2>
-              <p style={{ color: 'var(--text-muted)', marginBottom: 24, fontSize: 14 }}>
+            <div style={{ padding: '40px 32px', maxWidth: 850, margin: '0 auto', width: '100%' }}>
+              <h2 style={{ marginBottom: 8, fontSize: 24, fontWeight: 800 }}>Upload Dataset</h2>
+              <p style={{ color: 'var(--text-muted)', marginBottom: 28, fontSize: 15 }}>
                 Upload a CSV, Excel, or SQLite file to start analyzing with AI.
               </p>
               <UploadZone onUploadSuccess={(ds) => setActiveDataset(ds)} />

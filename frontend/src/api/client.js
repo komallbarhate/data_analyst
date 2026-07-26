@@ -1,7 +1,9 @@
 import axios from 'axios'
 
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+
 const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: API_BASE_URL,
   timeout: 120000,
 })
 
@@ -50,10 +52,10 @@ export const getQueryHistory = (limit = 20) => api.get(`/api/history?limit=${lim
 
 // ─── Export APIs ───────────────────────────────────────────────────────────
 
-export const exportCSV = (sessionId) => `http://localhost:8000/api/export/${sessionId}/csv`
-export const exportExcel = (sessionId) => `http://localhost:8000/api/export/${sessionId}/excel`
-export const exportPDF = (sessionId) => `http://localhost:8000/api/export/${sessionId}/pdf`
-export const exportChartPNG = (sessionId) => `http://localhost:8000/api/export/${sessionId}/chart-png`
+export const exportCSV = (sessionId) => `${API_BASE_URL}/api/export/${sessionId}/csv`
+export const exportExcel = (sessionId) => `${API_BASE_URL}/api/export/${sessionId}/excel`
+export const exportPDF = (sessionId) => `${API_BASE_URL}/api/export/${sessionId}/pdf`
+export const exportChartPNG = (sessionId) => `${API_BASE_URL}/api/export/${sessionId}/chart-png`
 
 // ─── Auth APIs ─────────────────────────────────────────────────────────────
 
