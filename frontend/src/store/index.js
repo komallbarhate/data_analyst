@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-// ─── Auth Store ────────────────────────────────────────────────────────────
-
+// ─── Auth Store ─────────────────────────────────────────────────────────────
+// persisted so user stays logged in after refresh
 export const useAuthStore = create(
   persist(
     (set) => ({
@@ -14,34 +14,52 @@ export const useAuthStore = create(
       },
       logout: () => {
         localStorage.removeItem('token')
-        localStorage.removeItem('user')
         set({ user: null, token: null })
       },
     }),
-    { name: 'auth-storage' }
+    {
+      name: 'auth-storage',
+      // only persist user and token
+      partialize: (state) => ({ user: state.user, token: state.token }),
+    }
   )
 )
 
-// ─── Dataset Store ─────────────────────────────────────────────────────────
+// ─── Dataset Store ───────────────────────────────────────────────────────────
+// persisted so active dataset and dataset list survive refresh
+export const useDatasetStore = create(
+  persist(
+    (set, get) => ({
+      datasets: [],
+      activeDataset: null,
+      setDatasets: (datasets) => set({ datasets }),
+      addDataset: (dataset) =>
+        set((state) => ({ datasets: [dataset, ...state.datasets] })),
+      removeDataset: (id) =>
+        set((state) => ({
+          datasets: state.datasets.filter((d) => d.id !== id),
+          activeDataset: state.activeDataset?.id === id ? null : state.activeDataset,
+        })),
+      setActiveDataset: (dataset) => set({ activeDataset: dataset }),
+    }),
+    {
+      name: 'dataset-storage',
+      partialize: (state) => ({
+        datasets: state.datasets,
+        activeDataset: state.activeDataset,
+      }),
+    }
+  )
+)
 
-export const useDatasetStore = create((set, get) => ({
-  datasets: [],
-  activeDataset: null,
-  setDatasets: (datasets) => set({ datasets }),
-  addDataset: (dataset) => set((state) => ({ datasets: [dataset, ...state.datasets] })),
-  removeDataset: (id) =>
-    set((state) => ({ datasets: state.datasets.filter((d) => d.id !== id) })),
-  setActiveDataset: (dataset) => set({ activeDataset: dataset }),
-}))
-
-// ─── Chat Store ────────────────────────────────────────────────────────────
+// ─── Chat Store ──────────────────────────────────────────────────────────────
 
 export const useChatStore = create((set, get) => ({
   sessions: [],
   activeSessionId: null,
-  messages: [],          // messages for the active session
+  messages: [],
   isLoading: false,
-  reasoning: [],         // current reasoning trace
+  reasoning: [],
 
   setSessions: (sessions) => set({ sessions }),
   setActiveSession: (id) => set({ activeSessionId: id, messages: [] }),
@@ -63,11 +81,11 @@ export const useChatStore = create((set, get) => ({
     }),
 }))
 
-// ─── UI Store ──────────────────────────────────────────────────────────────
+// ─── UI Store ─────────────────────────────────────────────────────────────────
 
 export const useUIStore = create((set) => ({
   sidebarOpen: true,
-  activeTab: 'chat',      // 'chat' | 'datasets' | 'history'
+  activeTab: 'chat',
   showReasoning: false,
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   setActiveTab: (tab) => set({ activeTab: tab }),

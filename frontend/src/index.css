@@ -895,3 +895,169 @@ textarea.input {
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rounded { border-radius: var(--radius-md); }
 .overflow-hidden { overflow: hidden; }
+
+/* ─── Mobile Overlay Sidebar ─────────────────────────────────────────────── */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 99;
+  backdrop-filter: blur(2px);
+}
+
+/* ─── Mobile Bottom Nav ───────────────────────────────────────────────────── */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  z-index: 50;
+  padding: 6px 0 env(safe-area-inset-bottom, 6px);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+}
+
+.mobile-bottom-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.mobile-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+  min-width: 60px;
+}
+.mobile-nav-btn.active {
+  color: var(--purple-400);
+}
+.mobile-nav-btn.active svg {
+  color: var(--purple-500);
+}
+
+/* ─── Responsive Breakpoints ─────────────────────────────────────────────── */
+
+/* Tablet (≤ 900px) */
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease, width 0.25s ease;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.1);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay.visible {
+    display: block;
+  }
+
+  .main-content {
+    width: 100%;
+    height: 100vh;
+  }
+
+  .app-layout {
+    position: relative;
+  }
+}
+
+/* Mobile (≤ 640px) */
+@media (max-width: 640px) {
+  /* Show bottom nav, hide sidebar entirely */
+  .mobile-bottom-nav { display: block; }
+  .sidebar { display: none !important; }
+
+  .main-content {
+    height: 100vh;
+    padding-bottom: 64px; /* leave room for bottom nav */
+  }
+
+  /* Auth card full-width on mobile */
+  .auth-card {
+    margin: 0 !important;
+    border-radius: 0 !important;
+    min-height: 100vh;
+    width: 100% !important;
+    padding: 32px 20px !important;
+    box-shadow: none !important;
+  }
+
+  .auth-page {
+    padding: 0 !important;
+    align-items: flex-start !important;
+  }
+
+  /* Dashboard padding */
+  .dashboard-inner {
+    padding: 16px !important;
+  }
+
+  /* Messages less padding */
+  .messages-area {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  /* Chat input area */
+  .chat-input-area {
+    padding: 10px 12px;
+  }
+
+  /* Upload zone tighter on mobile */
+  .upload-zone {
+    padding: 28px 16px;
+  }
+
+  /* Stats grid single column */
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 14px !important;
+  }
+
+  /* Smaller heading */
+  h2 { font-size: 1.3rem; }
+
+  /* Make buttons full touch-friendly */
+  .btn { min-height: 40px; }
+  .btn-sm { min-height: 34px; }
+
+  /* Tab bar wrap */
+  .tab-bar { flex-wrap: wrap; }
+
+  /* Code blocks */
+  .code-block { font-size: 12px; }
+
+  /* Sidebar overlay unneeded on mobile */
+  .sidebar-overlay { display: none !important; }
+}
+
+/* Large desktop (≥ 1400px) improvements */
+@media (min-width: 1400px) {
+  .messages-area { padding: 32px 48px; }
+}
+

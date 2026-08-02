@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Sparkles } from 'lucide-react'
+import { Eye, EyeOff, Sparkles, User, Mail } from 'lucide-react'
 import { login, register } from '../api/client'
 import { useAuthStore } from '../store'
 import toast from 'react-hot-toast'
 
 export default function AuthPage() {
   const [mode, setMode] = useState('login')  // 'login' | 'register'
-  const [form, setForm] = useState({ email: '', username: '', password: '' })
+  const [loginField, setLoginField] = useState('email')  // 'email' | 'username'
+  const [form, setForm] = useState({ email: '', username: '', password: '', loginValue: '' })
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const { setAuth } = useAuthStore()
@@ -19,7 +20,8 @@ export default function AuthPage() {
     try {
       let res
       if (mode === 'login') {
-        res = await login({ email: form.email, password: form.password })
+        // Backend accepts email field for both email and username lookup
+        res = await login({ email: form.loginValue, password: form.password })
       } else {
         res = await register({ email: form.email, username: form.username, password: form.password })
       }
@@ -35,7 +37,6 @@ export default function AuthPage() {
     }
   }
 
-  // Guest mode - skip auth
   const handleGuest = () => navigate('/')
 
   return (
@@ -59,7 +60,7 @@ export default function AuthPage() {
           </p>
         </div>
 
-        {/* Tab */}
+        {/* Mode Tab */}
         <div className="tab-bar" style={{ marginBottom: 24 }}>
           <button className={`tab-item ${mode === 'login' ? 'active' : ''}`} onClick={() => setMode('login')}>
             Sign In
@@ -71,36 +72,77 @@ export default function AuthPage() {
 
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 6, color: 'var(--text-secondary)' }}>
-                Email
-              </label>
-              <input
-                className="input"
-                type="email"
-                placeholder="you@example.com"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                required
-              />
-            </div>
 
-            {mode === 'register' && (
+            {mode === 'login' ? (
+              // ── Login fields ──
               <div>
+                {/* Email / Username toggle */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${loginField === 'email' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={{ flex: 1, justifyContent: 'center', gap: 5 }}
+                    onClick={() => setLoginField('email')}
+                  >
+                    <Mail size={13} /> Email
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${loginField === 'username' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={{ flex: 1, justifyContent: 'center', gap: 5 }}
+                    onClick={() => setLoginField('username')}
+                  >
+                    <User size={13} /> Username
+                  </button>
+                </div>
                 <label style={{ fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 6, color: 'var(--text-secondary)' }}>
-                  Username
+                  {loginField === 'email' ? 'Email Address' : 'Username'}
                 </label>
                 <input
                   className="input"
-                  type="text"
-                  placeholder="analyst42"
-                  value={form.username}
-                  onChange={(e) => setForm({ ...form, username: e.target.value })}
+                  type={loginField === 'email' ? 'email' : 'text'}
+                  placeholder={loginField === 'email' ? 'you@example.com' : 'analyst42'}
+                  value={form.loginValue}
+                  onChange={(e) => setForm({ ...form, loginValue: e.target.value })}
                   required
+                  autoComplete={loginField === 'email' ? 'email' : 'username'}
                 />
               </div>
+            ) : (
+              // ── Register fields ──
+              <>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 6, color: 'var(--text-secondary)' }}>
+                    Email Address
+                  </label>
+                  <input
+                    className="input"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 6, color: 'var(--text-secondary)' }}>
+                    Username
+                  </label>
+                  <input
+                    className="input"
+                    type="text"
+                    placeholder="analyst42"
+                    value={form.username}
+                    onChange={(e) => setForm({ ...form, username: e.target.value })}
+                    required
+                    autoComplete="username"
+                  />
+                </div>
+              </>
             )}
 
+            {/* Password */}
             <div>
               <label style={{ fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 6, color: 'var(--text-secondary)' }}>
                 Password
@@ -114,6 +156,7 @@ export default function AuthPage() {
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   required
                   style={{ paddingRight: 44 }}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 />
                 <button
                   type="button"

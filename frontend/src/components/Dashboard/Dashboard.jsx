@@ -6,6 +6,7 @@ import {
 import { format } from 'date-fns'
 import { getDatasets, deleteDataset, getSessions, getQueryHistory } from '../../api/client'
 import { useDatasetStore } from '../../store'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -122,6 +123,7 @@ function HistoryItem({ item }) {
 
 export default function Dashboard({ onSelectDataset, onStartChat }) {
   const [datasets, setDatasets] = useState([])
+  const navigate = useNavigate()
   const [sessions, setSessions] = useState([])
   const [history, setHistory] = useState([])
   const [activeTab, setActiveTab] = useState('datasets')
@@ -255,6 +257,8 @@ export default function Dashboard({ onSelectDataset, onStartChat }) {
               {datasets.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
                   No datasets yet. Upload a CSV or Excel file to get started.
+                  <br />
+                  <button className="btn btn-primary btn-sm" style={{ marginTop: 12 }} onClick={() => navigate('/upload')}>Upload Dataset</button>
                 </div>
               ) : datasets.map((d) => (
                 <DatasetRow
