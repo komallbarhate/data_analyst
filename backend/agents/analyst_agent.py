@@ -81,6 +81,96 @@ def build_history_context(state: AgentState) -> str:
 
 # ─── Node 1: Planner ─────────────────────────────────────────────────────────
 
+def smart_planner_fallback(state: AgentState) -> Dict[str, Any]:
+    q = state["question"].lower()
+    tbl = state["table_name"]
+    cols = list(state["schema"].keys())
+
+    num_cols = [c for c, t in state["schema"].items() if any(k in str(t).lower() for k in ["int", "float", "double", "decimal", "numeric", "real", "bigint"])]
+    text_cols = [c for c in cols if c not in num_cols]
+
+    cat_col = text_cols[0] if text_cols else (cols[0] if cols else "col1")
+    val_col = num_cols[0] if num_cols else (cols[1] if len(cols) > 1 else cols[0])
+
+    for c in cols:
+        if c.lower() in q:
+            if c in text_cols:
+                cat_col = c
+            elif c in num_cols:
+                val_col = c
+
+    # Missing values
+    if any(k in q for k in ["missing", "null", "na"]):
+        return {
+            "tool": "python",
+            "needs_chart": True,
+            "chart_type": "bar",
+            "reasoning": "Calculating missing value counts per column using Python.",
+            "code": "missing = df.isnull().sum().reset_index()\nmissing.columns = ['Column', 'MissingCount']\nmissing = missing.sort_values(by='MissingCount', ascending=False)\nfig = px.bar(missing, x='Column', y='MissingCount', title='Missing Values per Column', color_discrete_sequence=['#ef4444'])"
+        }
+
+    # Descriptive stats & anomalies
+    if any(k in q for k in ["statistics", "summary", "anomalies", "outlier", "describe", "distribution"]):
+        return {
+            "tool": "stats",
+            "needs_chart": False,
+            "reasoning": "Computing comprehensive statistical metrics, skewness, and outliers.",
+            "code": ""
+        }
+
+    # Bar chart / Plot top 5 / visualization
+    if any(k in q for k in ["plot", "chart", "bar", "graph", "visualize", "top 5", "top 10"]):
+        limit_val = 5 if "5" in q else 10
+        if num_cols:
+            code = f'SELECT "{cat_col}", SUM("{val_col}") AS "{val_col}" FROM "{tbl}" GROUP BY "{cat_col}" ORDER BY "{val_col}" DESC LIMIT {limit_val}'
+        else:
+            code = f'SELECT "{cat_col}", COUNT(*) AS "Count" FROM "{tbl}" GROUP BY "{cat_col}" ORDER BY "Count" DESC LIMIT {limit_val}'
+        return {
+            "tool": "sql",
+            "needs_chart": True,
+            "chart_type": "bar",
+            "chart_x_col": cat_col,
+            "chart_y_col": val_col if num_cols else "Count",
+            "reasoning": f"Querying top {limit_val} values for visual bar chart.",
+            "code": code
+        }
+
+    # Total / sales / category aggregations
+    if any(k in q for k in ["total", "sum", "sales", "revenue", "by category", "group by", "average", "mean"]):
+        if num_cols:
+            code = f'SELECT "{cat_col}", SUM("{val_col}") AS "Total_{val_col}" FROM "{tbl}" GROUP BY "{cat_col}" ORDER BY "Total_{val_col}" DESC LIMIT 20'
+        else:
+            code = f'SELECT "{cat_col}", COUNT(*) AS "Total_Count" FROM "{tbl}" GROUP BY "{cat_col}" ORDER BY "Total_Count" DESC LIMIT 20'
+        return {
+            "tool": "sql",
+            "needs_chart": True,
+            "chart_type": "bar",
+            "chart_x_col": cat_col,
+            "chart_y_col": f"Total_{val_col}" if num_cols else "Total_Count",
+            "reasoning": "Aggregating metrics grouped by category.",
+            "code": code
+        }
+
+    # First N rows
+    if any(k in q for k in ["first 10", "first 5", "sample", "head", "show rows", "show me"]):
+        limit_val = 10
+        if "5" in q: limit_val = 5
+        if "20" in q: limit_val = 20
+        return {
+            "tool": "sql",
+            "needs_chart": False,
+            "reasoning": f"Retrieving the first {limit_val} rows from the table.",
+            "code": f'SELECT * FROM "{tbl}" LIMIT {limit_val}'
+        }
+
+    return {
+        "tool": "sql",
+        "needs_chart": False,
+        "reasoning": "Executing SQL query for requested dataset question.",
+        "code": f'SELECT * FROM "{tbl}" LIMIT 10'
+    }
+
+
 def planner_node(state: AgentState) -> AgentState:
     """Decide which tool to use and generate the code."""
     state["reasoning_trace"].append({
@@ -129,6 +219,9 @@ Table name for SQL: "{state['table_name']}" """
             {"role": "user", "content": user_msg},
         ])
 
+        if not plan or not plan.get("code") or plan.get("tool") not in ["sql", "python", "stats", "insight_only"]:
+            plan = smart_planner_fallback(state)
+
         state["plan"] = plan
         state["tool_to_use"] = plan.get("tool", "sql")
         state["needs_chart"] = plan.get("needs_chart", False)
@@ -141,12 +234,15 @@ Table name for SQL: "{state['table_name']}" """
         })
 
     except Exception as e:
-        state["tool_to_use"] = "sql"
-        state["generated_code"] = f'SELECT * FROM "{state["table_name"]}" LIMIT 10'
-        state["needs_chart"] = False
+        fallback_plan = smart_planner_fallback(state)
+        state["plan"] = fallback_plan
+        state["tool_to_use"] = fallback_plan.get("tool", "sql")
+        state["generated_code"] = fallback_plan.get("code", "")
+        state["needs_chart"] = fallback_plan.get("needs_chart", False)
+        state["chart_type"] = fallback_plan.get("chart_type")
         state["reasoning_trace"].append({
-            "step": "⚠️ Planning fallback",
-            "detail": f"Error in planning: {str(e)}. Falling back to basic SQL."
+            "step": "💡 Smart Intent Planner",
+            "detail": fallback_plan.get("reasoning", "Generated specialized query plan.")
         })
 
     return state
@@ -300,7 +396,14 @@ def executor_node(state: AgentState) -> AgentState:
             })
 
     elif tool == "stats":
-        result = stats_tool.full_stats(state["sample_data"])
+        try:
+            conn, tbl = sql_tool.load_dataset(state["dataset_path"], state["file_type"])
+            full_df = conn.execute(f'SELECT * FROM "{tbl}"').fetchdf()
+            conn.close()
+            full_data = full_df.to_dict(orient="records")
+        except Exception:
+            full_data = state["sample_data"]
+        result = stats_tool.full_stats(full_data)
         state["execution_result"] = result
         if result.get("success"):
             state["table_data"] = [

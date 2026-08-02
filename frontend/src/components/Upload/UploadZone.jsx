@@ -22,28 +22,34 @@ export default function UploadZone({ onUploadSuccess }) {
 
   const onDrop = useCallback(async (acceptedFiles) => {
     if (!acceptedFiles.length) return
-    const file = acceptedFiles[0]
 
     setUploading(true)
     setProgress(0)
     setError(null)
     setUploaded(null)
 
-    try {
-      const res = await uploadDataset(file, setProgress)
-      const dataset = res.data
-      addDataset(dataset)
-      setActiveDataset(dataset)
-      setUploaded(dataset)
-      toast.success(`"${dataset.name}" uploaded successfully!`)
-      onUploadSuccess?.(dataset)
-    } catch (err) {
-      const msg = err.response?.data?.detail || 'Upload failed. Please try again.'
-      setError(msg)
-      toast.error(msg)
-    } finally {
-      setUploading(false)
+    let lastDataset = null
+    for (let i = 0; i < acceptedFiles.length; i++) {
+      const file = acceptedFiles[i]
+      try {
+        const res = await uploadDataset(file, (p) => {
+          const overall = Math.round(((i + p / 100) / acceptedFiles.length) * 100)
+          setProgress(overall)
+        })
+        const dataset = res.data
+        addDataset(dataset)
+        setActiveDataset(dataset)
+        lastDataset = dataset
+        toast.success(`"${dataset.name}" uploaded successfully!`)
+        onUploadSuccess?.(dataset)
+      } catch (err) {
+        const msg = err.response?.data?.detail || `Upload failed for ${file.name}`
+        setError(msg)
+        toast.error(msg)
+      }
     }
+    setUploaded(lastDataset)
+    setUploading(false)
   }, [addDataset, setActiveDataset, onUploadSuccess])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -54,7 +60,7 @@ export default function UploadZone({ onUploadSuccess }) {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
       'application/octet-stream': ['.sqlite', '.db'],
     },
-    maxFiles: 1,
+    maxFiles: 10,
     disabled: uploading,
   })
 

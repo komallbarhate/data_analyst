@@ -126,19 +126,26 @@ export default function Dashboard({ onSelectDataset, onStartChat }) {
   const [history, setHistory] = useState([])
   const [activeTab, setActiveTab] = useState('datasets')
   const [loading, setLoading] = useState(true)
-  const { activeDataset, setActiveDataset } = useDatasetStore()
+  const { activeDataset, setActiveDataset, removeDataset } = useDatasetStore()
 
   const loadData = async () => {
     setLoading(true)
     try {
-      const [dsRes, sessRes, histRes] = await Promise.all([
+      const [dsRes, sessRes, histRes] = await Promise.allSettled([
         getDatasets(),
         getSessions(),
         getQueryHistory(30),
       ])
-      setDatasets(dsRes.data)
-      setSessions(sessRes.data)
-      setHistory(histRes.data)
+
+      if (dsRes.status === 'fulfilled' && Array.isArray(dsRes.value.data)) {
+        setDatasets(dsRes.value.data)
+      }
+      if (sessRes.status === 'fulfilled' && Array.isArray(sessRes.value.data)) {
+        setSessions(sessRes.value.data)
+      }
+      if (histRes.status === 'fulfilled' && Array.isArray(histRes.value.data)) {
+        setHistory(histRes.value.data)
+      }
     } catch (err) {
       toast.error('Failed to load dashboard data')
     } finally {
@@ -153,6 +160,7 @@ export default function Dashboard({ onSelectDataset, onStartChat }) {
     try {
       await deleteDataset(id)
       setDatasets((prev) => prev.filter((d) => d.id !== id))
+      removeDataset(id)
       if (activeDataset?.id === id) setActiveDataset(null)
       toast.success('Dataset deleted')
     } catch {

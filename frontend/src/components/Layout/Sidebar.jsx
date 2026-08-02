@@ -75,10 +75,33 @@ export default function Sidebar() {
                 background: 'rgba(6,182,212,0.1)',
                 borderColor: 'rgba(6,182,212,0.3)',
                 color: 'var(--cyan-400)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
               }}
             >
-              <Database size={16} className="nav-icon" />
-              <span className="truncate">{activeDataset.name}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                <Database size={16} className="nav-icon" />
+                <span className="truncate">{activeDataset.name}</span>
+              </div>
+              <Trash2
+                size={14}
+                style={{ cursor: 'pointer', opacity: 0.7 }}
+                onClick={async (e) => {
+                  e.stopPropagation()
+                  if (!confirm(`Delete dataset "${activeDataset.name}"?`)) return
+                  try {
+                    await deleteDataset(activeDataset.id)
+                    const { removeDataset, setActiveDataset } = useDatasetStore.getState()
+                    removeDataset(activeDataset.id)
+                    setActiveDataset(null)
+                    toast.success('Dataset deleted')
+                  } catch {
+                    toast.error('Failed to delete dataset')
+                  }
+                }}
+                title="Delete dataset"
+              />
             </div>
             <div style={{ padding: '4px 12px', fontSize: 11, color: 'var(--text-muted)' }}>
               {activeDataset.row_count?.toLocaleString()} rows · {activeDataset.column_count} cols
